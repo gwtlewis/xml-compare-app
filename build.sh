@@ -130,7 +130,7 @@ fi
 echo "Starting backend server..."
 cd backend
 npm install --only=production
-npm start &
+node main.js &
 BACKEND_PID=$!
 
 # Wait for backend to start
@@ -196,7 +196,7 @@ fi
 echo "Starting backend server..."
 cd backend
 npm install --only=production
-npm start &
+node main.js &
 BACKEND_PID=$!
 
 # Wait for backend to start
