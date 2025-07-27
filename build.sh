@@ -120,6 +120,12 @@ set -e
 
 echo "🚀 Starting XML Compare App..."
 
+# Check if serve is available, if not install it
+if ! command -v npx serve &> /dev/null; then
+    echo "Installing serve package..."
+    npm install -g serve
+fi
+
 # Start backend
 echo "Starting backend server..."
 cd backend
@@ -128,19 +134,42 @@ npm start &
 BACKEND_PID=$!
 
 # Wait for backend to start
-sleep 5
+echo "Waiting for backend to initialize..."
+sleep 8
 
-# Start frontend (if needed for development)
-# cd ../frontend
-# npm run dev &
-# FRONTEND_PID=$!
+# Start frontend static server
+echo "Starting frontend server..."
+cd ../frontend
+npx serve -s . -l 3001 &
+FRONTEND_PID=$!
+
+# Wait a moment for frontend to start
+sleep 3
 
 echo "✅ XML Compare App started successfully!"
-echo "Backend running on: http://localhost:3000"
-echo "Frontend built and ready for deployment"
+echo ""
+echo "🌐 Access URLs:"
+echo "  Frontend: http://localhost:3001"
+echo "  Backend API: http://localhost:3000"
+echo "  Health Check: http://localhost:3000/health"
+echo ""
+echo "Press Ctrl+C to stop all services"
+
+# Function to cleanup processes on exit
+cleanup() {
+    echo ""
+    echo "🛑 Stopping services..."
+    kill $BACKEND_PID 2>/dev/null || true
+    kill $FRONTEND_PID 2>/dev/null || true
+    echo "👋 Services stopped"
+    exit 0
+}
+
+# Set trap to cleanup on exit
+trap cleanup INT TERM
 
 # Wait for processes
-wait $BACKEND_PID
+wait $BACKEND_PID $FRONTEND_PID
 EOF
 
 chmod +x $BUILD_DIR/start.sh
@@ -157,11 +186,56 @@ echo "🚀 Starting XML Compare App in production mode..."
 # Set production environment
 export NODE_ENV=production
 
+# Check if serve is available, if not install it
+if ! command -v npx serve &> /dev/null; then
+    echo "Installing serve package..."
+    npm install -g serve
+fi
+
 # Start backend
 echo "Starting backend server..."
 cd backend
 npm install --only=production
-npm start
+npm start &
+BACKEND_PID=$!
+
+# Wait for backend to start
+echo "Waiting for backend to initialize..."
+sleep 8
+
+# Start frontend static server
+echo "Starting frontend server..."
+cd ../frontend
+npx serve -s . -l 3001 &
+FRONTEND_PID=$!
+
+# Wait a moment for frontend to start
+sleep 3
+
+echo "✅ XML Compare App started successfully in production mode!"
+echo ""
+echo "🌐 Production URLs:"
+echo "  Frontend: http://localhost:3001"
+echo "  Backend API: http://localhost:3000"
+echo "  Health Check: http://localhost:3000/health"
+echo ""
+echo "Press Ctrl+C to stop all services"
+
+# Function to cleanup processes on exit
+cleanup() {
+    echo ""
+    echo "🛑 Stopping production services..."
+    kill $BACKEND_PID 2>/dev/null || true
+    kill $FRONTEND_PID 2>/dev/null || true
+    echo "👋 Production services stopped"
+    exit 0
+}
+
+# Set trap to cleanup on exit
+trap cleanup INT TERM
+
+# Wait for processes
+wait $BACKEND_PID $FRONTEND_PID
 EOF
 
 chmod +x $BUILD_DIR/start-production.sh
@@ -231,7 +305,11 @@ cat > $BUILD_DIR/package.json << 'EOF'
   "scripts": {
     "start": "./start.sh",
     "start:prod": "./start-production.sh",
+    "health": "./health-check.sh",
     "postinstall": "cd backend && npm install --only=production"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
   },
   "engines": {
     "node": ">=16.0.0",
@@ -253,11 +331,36 @@ set -e
 echo "🔍 Performing health check..."
 
 # Check if backend is running
-if curl -s http://localhost:3000/api/xml-compare/admin/test > /dev/null; then
+echo "Checking backend health..."
+if curl -s http://localhost:3000/health > /dev/null; then
     echo "✅ Backend is healthy"
-    exit 0
+    BACKEND_HEALTHY=true
 else
     echo "❌ Backend is not responding"
+    BACKEND_HEALTHY=false
+fi
+
+# Check if frontend is running
+echo "Checking frontend..."
+if curl -s http://localhost:3001 > /dev/null; then
+    echo "✅ Frontend is serving"
+    FRONTEND_HEALTHY=true
+else
+    echo "❌ Frontend is not responding"
+    FRONTEND_HEALTHY=false
+fi
+
+# Overall health status
+if [ "$BACKEND_HEALTHY" = true ] && [ "$FRONTEND_HEALTHY" = true ]; then
+    echo ""
+    echo "🎉 All services are healthy!"
+    echo "  Frontend: http://localhost:3001"
+    echo "  Backend: http://localhost:3000"
+    echo "  Health API: http://localhost:3000/health"
+    exit 0
+else
+    echo ""
+    echo "⚠️ Some services are not responding"
     exit 1
 fi
 EOF
