@@ -238,14 +238,24 @@ jobs:
     - name: Run basic performance tests
       run: |
         echo "🚀 Running basic performance tests..."
+        echo "Testing health endpoint..."
         curl -f http://localhost:3000/health || echo "Health check failed"
+        echo "Testing health endpoint response format..."
+        curl -s http://localhost:3000/health | grep -q "isAvailable" && echo "✅ Health endpoint format is correct" || echo "❌ Health endpoint format issue"
         echo "Performance tests completed"
         
     - name: Create performance report
       run: |
         echo "# Performance Test Report" > performance-report.md
         echo "Date: $(date)" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "## Backend Health Status" >> performance-report.md
         echo "Backend started successfully" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "### Health Endpoint Test" >> performance-report.md
+        echo "\`\`\`json" >> performance-report.md
+        curl -s http://localhost:3000/health >> performance-report.md || echo "Health endpoint not available" >> performance-report.md
+        echo "\`\`\`" >> performance-report.md
         
     - name: Upload performance report
       uses: actions/upload-artifact@v4
