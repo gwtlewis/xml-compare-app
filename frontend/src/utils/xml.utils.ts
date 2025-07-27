@@ -230,7 +230,7 @@ export function beautifyXml(xml: string, options: {
     
     if (collapseEmptyElements) {
       // Collapse empty elements
-      formatted = formatted.replace(/<([^>\/]+)\s*><\/\1>/g, '<$1/>');
+      formatted = formatted.replace(/<([^>/]+)\s*><\/\1>/g, '<$1/>');
     }
     
     // Split into individual tags and text content
