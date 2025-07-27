@@ -9,6 +9,8 @@ import { CompareRequestDto } from '../models/compare-request.dto';
 
 interface XmlNode {
   [key: string]: unknown;
+  ':@'?: Record<string, string>;
+  '#text'?: string;
 }
 
 interface ComparisonOptions {
@@ -169,8 +171,8 @@ export class XmlCompareService {
     ignoredProperties: string[],
   ): void {
     // Handle attributes stored in :@ object
-    const attrs1 = (obj1 as any)[':@'] || {};
-    const attrs2 = (obj2 as any)[':@'] || {};
+    const attrs1 = (obj1 as XmlNode)[':@'] || {};
+    const attrs2 = (obj2 as XmlNode)[':@'] || {};
     
     const attrKeys1 = Object.keys(attrs1);
     const attrKeys2 = Object.keys(attrs2);
@@ -446,7 +448,7 @@ export class XmlCompareService {
    */
   private extractTextContent(obj: unknown): string {
     if (this.isTextContent(obj)) {
-      return String((obj as any)['#text']);
+      return String((obj as XmlNode)['#text']);
     }
     return String(obj);
   }
