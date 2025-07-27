@@ -14,7 +14,7 @@ global.fetch = jest.fn();
 Object.defineProperty(window, 'DOMParser', {
   writable: true,
   value: jest.fn().mockImplementation(() => ({
-    parseFromString: jest.fn().mockImplementation((str: string, type: string) => {
+    parseFromString: jest.fn().mockImplementation((str: string, _type: string) => {
       // Simple mock implementation
       if (str.includes('<') && str.includes('>')) {
         const hasParseError = !str.includes('</') || str.includes('<root><item>test</item>');
@@ -33,6 +33,6 @@ Object.defineProperty(window, 'DOMParser', {
 Object.defineProperty(window, 'XMLSerializer', {
   writable: true,
   value: jest.fn().mockImplementation(() => ({
-    serializeToString: jest.fn().mockImplementation((doc: any) => '<?xml version="1.0"?><root><item>test</item></root>'),
+    serializeToString: jest.fn().mockImplementation((_doc: any) => '<?xml version="1.0"?><root><item>test</item></root>'),
   })),
 });
