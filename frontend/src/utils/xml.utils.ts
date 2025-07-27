@@ -80,6 +80,7 @@ function addIndentation(xml: string): string {
  */
 export function minifyXml(xml: string): string {
   try {
+    // First validate the XML
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
     
@@ -89,8 +90,12 @@ export function minifyXml(xml: string): string {
       throw new Error('Invalid XML format');
     }
     
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(doc);
+    // Simple minification by removing whitespace between tags
+    return xml
+      .replace(/>\s+</g, '><')  // Remove whitespace between tags
+      .replace(/^\s+|\s+$/g, '') // Remove leading/trailing whitespace
+      .replace(/\n\s*/g, '')     // Remove newlines and indentation
+      .trim();
   } catch (error) {
     throw new Error(`Failed to minify XML: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -205,6 +210,7 @@ export function beautifyXml(xml: string, options: {
   } = options;
   
   try {
+    // First validate the XML
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
     
@@ -214,41 +220,62 @@ export function beautifyXml(xml: string, options: {
       throw new Error('Invalid XML format');
     }
     
-    const serializer = new XMLSerializer();
-    let formatted = serializer.serializeToString(doc);
+    // Clean and format the XML manually for better control
+    let formatted = xml;
     
     if (!preserveWhitespace) {
-      // Remove extra whitespace
-      formatted = formatted.replace(/\s+/g, ' ').trim();
+      // Remove extra whitespace between tags
+      formatted = formatted.replace(/>\s+</g, '><').trim();
     }
     
     if (collapseEmptyElements) {
       // Collapse empty elements
-      formatted = formatted.replace(/<([^>]+)\s*\/>/g, '<$1/>');
+      formatted = formatted.replace(/<([^>\/]+)\s*><\/\1>/g, '<$1/>');
     }
     
-    // Add indentation
-    const lines = formatted.split('\n');
+    // Split into individual tags and text content
+    const parts = formatted.split(/(<[^>]*>)/);
     const formattedLines: string[] = [];
     let indentLevel = 0;
+    let currentLine = '';
     
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) continue;
+    for (const part of parts) {
+      if (!part.trim()) continue;
       
-      // Decrease indent for closing tags
-      if (trimmedLine.startsWith('</')) {
-        indentLevel = Math.max(0, indentLevel - 1);
+      if (part.startsWith('<')) {
+        // This is a tag
+        if (currentLine.trim()) {
+          // Add any pending content
+          const indent = ' '.repeat(indentLevel * indentSize);
+          formattedLines.push(indent + currentLine.trim());
+          currentLine = '';
+        }
+        
+        // Handle closing tags
+        if (part.startsWith('</')) {
+          indentLevel = Math.max(0, indentLevel - 1);
+        }
+        
+        // Add the tag with proper indentation
+        const indent = ' '.repeat(indentLevel * indentSize);
+        formattedLines.push(indent + part);
+        
+        // Handle opening tags (but not self-closing)
+        if (part.startsWith('<') && !part.startsWith('</') && !part.endsWith('/>')) {
+          indentLevel++;
+        }
+      } else {
+        // This is text content
+        if (part.trim()) {
+          currentLine += part.trim();
+        }
       }
-      
-      // Add indentation
+    }
+    
+    // Add any remaining content
+    if (currentLine.trim()) {
       const indent = ' '.repeat(indentLevel * indentSize);
-      formattedLines.push(indent + trimmedLine);
-      
-      // Increase indent for opening tags (but not self-closing)
-      if (trimmedLine.startsWith('<') && !trimmedLine.startsWith('</') && !trimmedLine.endsWith('/>')) {
-        indentLevel++;
-      }
+      formattedLines.push(indent + currentLine.trim());
     }
     
     return formattedLines.join('\n');
